@@ -60,9 +60,20 @@ var rootCmd = &cobra.Command{
 			log.Fatalf("Unable to retrieve Calendar client: %v", err)
 		}
 
-		t := time.Now().Format(time.RFC3339)
-		events, err := srv.Events.List("primary").ShowDeleted(false).
-			SingleEvents(true).TimeMin(t).MaxResults(10).OrderBy("startTime").Do()
+		t := time.Now()
+		startTime := t.Format(time.RFC3339)
+		endTime := time.Date(t.Year(), t.Month(), t.Day(), 23, 59, 59, 59, t.Location()).Format(time.RFC3339)
+
+		events, err := srv.Events.
+			List("primary").
+			ShowDeleted(false).
+			SingleEvents(true).
+			TimeMin(startTime).
+			TimeMax(endTime).
+			MaxResults(10).
+			OrderBy("startTime").
+			Do()
+
 		if err != nil {
 			log.Fatalf("Unable to retrieve next ten of the user's events: %v", err)
 		}
@@ -70,17 +81,14 @@ var rootCmd = &cobra.Command{
 		if len(events.Items) == 0 {
 			fmt.Println("No events for today.")
 		} else {
-			for i, item := range events.Items {
+			fmt.Print(formatEvent(events.Items[0]))
 
-				fmt.Print(formatEvent(item))
-
-				if i >= 1 {
-					fmt.Print("\n")
-					return
-				} else {
-					fmt.Print(" -> ")
-				}
+			if len(events.Items) > 1 {
+				fmt.Print(" -> ")
+				fmt.Print(formatEvent(events.Items[1]))
 			}
+
+			fmt.Print("\n")
 		}
 	},
 }
