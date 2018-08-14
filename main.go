@@ -7,6 +7,7 @@ import (
 	"log"
 	"net/http"
 	"os"
+	"strings"
 	"time"
 
 	"github.com/spf13/cobra"
@@ -36,8 +37,15 @@ func formatEvent(event *calendar.Event) string {
 	}
 
 	fdate := date.Format("15:04")
+	summary := event.Summary
+	limit := 50
 
-	return fmt.Sprintf("[%s] %s", fdate, event.Summary)
+	if len(summary) > limit {
+		summary = fmt.Sprintf("%s...", strings.Trim(summary[:limit], " \n\r\".'"))
+
+	}
+
+	return fmt.Sprintf("[%s] %s", fdate, summary)
 }
 
 var rootCmd = &cobra.Command{
