@@ -7,6 +7,7 @@ import (
 	"log"
 	"net/http"
 	"os"
+	"regexp"
 	"strings"
 	"time"
 
@@ -17,10 +18,17 @@ import (
 	"google.golang.org/api/calendar/v3"
 )
 
+func must(err error) {
+	if err != nil {
+		log.Fatal(err)
+	}
+}
+
 var credsFile string
 var tokenFile string
 
 func init() {
+	rootCmd.AddCommand(agendaCmd, zoomCmd)
 	rootCmd.PersistentFlags().StringVarP(&credsFile, "credentials", "", "credentials.json", "credentials file (default is credentials.json)")
 	rootCmd.PersistentFlags().StringVarP(&tokenFile, "token", "", "token.json", "token file (default is token.json)")
 }
@@ -41,50 +49,61 @@ func formatEvent(event *calendar.Event) string {
 	limit := 50
 
 	if len(summary) > limit {
-		summary = fmt.Sprintf("%s...", strings.Trim(summary[:limit], " \n\r\".'"))
+		summary = fmt.Sprintf("%s...", strings.Trim(summary[:limit], " \n\r\"'"))
 
 	}
 
 	return fmt.Sprintf("[%s] %s", fdate, summary)
 }
 
+func getEvents() *calendar.Events {
+	b, err := ioutil.ReadFile(credsFile)
+	if err != nil {
+		log.Fatalf("Unable to read client secret file: %v", err)
+	}
+
+	config, err := google.ConfigFromJSON(b, calendar.CalendarReadonlyScope)
+	if err != nil {
+		log.Fatalf("Unable to parse client secret file to config: %v", err)
+	}
+	client := getClient(config)
+
+	srv, err := calendar.New(client)
+	if err != nil {
+		log.Fatalf("Unable to retrieve Calendar client: %v", err)
+	}
+
+	t := time.Now()
+	startTime := t.Format(time.RFC3339)
+	endTime := time.Date(t.Year(), t.Month(), t.Day(), 23, 59, 59, 59, t.Location()).Format(time.RFC3339)
+
+	events, err := srv.Events.
+		List("primary").
+		ShowDeleted(false).
+		SingleEvents(true).
+		TimeMin(startTime).
+		TimeMax(endTime).
+		MaxResults(10).
+		OrderBy("startTime").
+		Do()
+
+	must(err)
+
+	return events
+}
+
 var rootCmd = &cobra.Command{
 	Use:   "gocalendar-agenda-cli-tool",
 	Short: "Simple cli tool to display your upcoming agenda",
 	Run: func(cmd *cobra.Command, args []string) {
-		b, err := ioutil.ReadFile(credsFile)
-		if err != nil {
-			log.Fatalf("Unable to read client secret file: %v", err)
-		}
+	},
+}
 
-		config, err := google.ConfigFromJSON(b, calendar.CalendarReadonlyScope)
-		if err != nil {
-			log.Fatalf("Unable to parse client secret file to config: %v", err)
-		}
-		client := getClient(config)
-
-		srv, err := calendar.New(client)
-		if err != nil {
-			log.Fatalf("Unable to retrieve Calendar client: %v", err)
-		}
-
-		t := time.Now()
-		startTime := t.Format(time.RFC3339)
-		endTime := time.Date(t.Year(), t.Month(), t.Day(), 23, 59, 59, 59, t.Location()).Format(time.RFC3339)
-
-		events, err := srv.Events.
-			List("primary").
-			ShowDeleted(false).
-			SingleEvents(true).
-			TimeMin(startTime).
-			TimeMax(endTime).
-			MaxResults(10).
-			OrderBy("startTime").
-			Do()
-
-		if err != nil {
-			log.Fatalf("Unable to retrieve next ten of the user's events: %v", err)
-		}
+var agendaCmd = &cobra.Command{
+	Use:   "agenda",
+	Short: "Print next 2 upcoming meetings",
+	Run: func(cmd *cobra.Command, args []string) {
+		events := getEvents()
 
 		if len(events.Items) == 0 {
 			fmt.Println("No events for today.")
@@ -97,6 +116,23 @@ var rootCmd = &cobra.Command{
 			}
 
 			fmt.Print("\n")
+		}
+	},
+}
+
+var linkRe = regexp.MustCompile(`https://([^\.]\+\.)?zoom\.us/j/\d*`)
+
+func getZoomLink(e *calendar.Event) string {
+	return linkRe.FindString(e.Description)
+}
+
+var zoomCmd = &cobra.Command{
+	Use:   "zoom",
+	Short: "Print next upcoming meeting's zoom link",
+	Run: func(cmd *cobra.Command, args []string) {
+		events := getEvents()
+		if len(events.Items) > 0 {
+			fmt.Print(getZoomLink(events.Items[0]))
 		}
 	},
 }
