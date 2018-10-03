@@ -120,7 +120,7 @@ var agendaCmd = &cobra.Command{
 	},
 }
 
-var linkRe = regexp.MustCompile(`https://([^\.]\+\.)?zoom\.us/j/\d*`)
+var linkRe = regexp.MustCompile(`https://([^\.]+\.)?zoom\.us/j/\d*`)
 
 func getZoomLink(e *calendar.Event) string {
 	return linkRe.FindString(e.Description)
