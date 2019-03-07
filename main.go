@@ -132,7 +132,14 @@ var zoomCmd = &cobra.Command{
 	Run: func(cmd *cobra.Command, args []string) {
 		events := getEvents()
 		if len(events.Items) > 0 {
-			fmt.Print(getZoomLink(events.Items[0]))
+			for _, item := range events.Items {
+
+				link := getZoomLink(item)
+				if link != "" {
+					fmt.Print(link)
+					return
+				}
+			}
 		}
 	},
 }
