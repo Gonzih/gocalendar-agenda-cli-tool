@@ -2,6 +2,8 @@ module github.com/Gonzih/gocalendar-agenda-cli-tool
 
 replace github.com/golang/lint => github.com/golang/lint v0.0.0-20190227174305-8f45f776aaf1
 
+replace github.com/go-resty/resty => gopkg.in/resty.v1 v1.9.0
+
 require (
 	cloud.google.com/go v0.34.0 // indirect
 	github.com/inconshreveable/mousetrap v1.0.0 // indirect
