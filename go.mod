@@ -1,5 +1,7 @@
 module github.com/Gonzih/gocalendar-agenda-cli-tool
 
+replace github.com/golang/lint => github.com/golang/lint v0.0.0-20190227174305-8f45f776aaf1
+
 require (
 	cloud.google.com/go v0.34.0 // indirect
 	github.com/inconshreveable/mousetrap v1.0.0 // indirect
